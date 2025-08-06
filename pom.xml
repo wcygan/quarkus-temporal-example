@@ -17,6 +17,12 @@
     <surefire-plugin.version>3.2.5</surefire-plugin.version>
     <jooq.version>3.19.0</jooq.version>
     <mysql.version>8.0.33</mysql.version>
+    
+    <!-- Parallel test execution properties -->
+    <parallel.unit.tests>true</parallel.unit.tests>
+    <parallel.integration.tests>true</parallel.integration.tests>
+    <test.thread.count>4</test.thread.count>
+    <jooq.codegen.skip>true</jooq.codegen.skip>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -185,6 +191,30 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire-plugin.version}</version>
         <configuration>
+          <!-- JUnit 5 parallel execution configuration -->
+          <properties>
+            <property>
+              <name>junit.jupiter.execution.parallel.enabled</name>
+              <value>true</value>
+            </property>
+            <property>
+              <name>junit.jupiter.execution.parallel.mode.default</name>
+              <value>concurrent</value>
+            </property>
+            <property>
+              <name>junit.jupiter.execution.parallel.config.strategy</name>
+              <value>dynamic</value>
+            </property>
+            <property>
+              <name>junit.jupiter.execution.parallel.config.dynamic.factor</name>
+              <value>2</value>
+            </property>
+          </properties>
+          
+          <!-- Fork configuration for better isolation -->
+          <forkCount>1</forkCount>
+          <reuseForks>true</reuseForks>
+          
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
@@ -203,6 +233,15 @@
           </execution>
         </executions>
         <configuration>
+          <!-- Parallel execution for integration tests -->
+          <parallel>classes</parallel>
+          <threadCount>2</threadCount>
+          <perCoreThreadCount>false</perCoreThreadCount>
+          
+          <!-- Fork configuration for integration tests -->
+          <forkCount>2</forkCount>
+          <reuseForks>false</reuseForks>
+          
           <systemPropertyVariables>
             <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
@@ -211,7 +250,7 @@
         </configuration>
       </plugin>
       
-      <!-- jOOQ Code Generation Plugin -->
+      <!-- jOOQ Code Generation Plugin - Only runs when database is available -->
       <plugin>
         <groupId>org.jooq</groupId>
         <artifactId>jooq-codegen-maven</artifactId>
@@ -225,6 +264,7 @@
               <goal>generate</goal>
             </goals>
             <configuration>
+              <skip>${jooq.codegen.skip}</skip>
               <jdbc>
                 <driver>com.mysql.cj.jdbc.Driver</driver>
                 <url>jdbc:mysql://localhost:3307/docstore</url>
@@ -277,6 +317,86 @@
         <skipITs>false</skipITs>
         <quarkus.package.jar.type>native</quarkus.package.jar.type>
       </properties>
+    </profile>
+    
+    <!-- Profile for fast parallel testing -->
+    <profile>
+      <id>parallel-tests</id>
+      <properties>
+        <test.thread.count>8</test.thread.count>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <parallel>all</parallel>
+              <threadCount>${test.thread.count}</threadCount>
+              <perCoreThreadCount>true</perCoreThreadCount>
+              <useUnlimitedThreads>false</useUnlimitedThreads>
+              <forkCount>2</forkCount>
+              <reuseForks>true</reuseForks>
+              <systemPropertyVariables>
+                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                <maven.home>${maven.home}</maven.home>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+          <plugin>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <parallel>classes</parallel>
+              <threadCount>4</threadCount>
+              <forkCount>4</forkCount>
+              <reuseForks>false</reuseForks>
+              <systemPropertyVariables>
+                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                <maven.home>${maven.home}</maven.home>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Profile for conservative parallel testing -->
+    <profile>
+      <id>parallel-conservative</id>
+      <properties>
+        <test.thread.count>2</test.thread.count>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <parallel>classes</parallel>
+              <threadCount>2</threadCount>
+              <perCoreThreadCount>false</perCoreThreadCount>
+              <forkCount>1</forkCount>
+              <reuseForks>true</reuseForks>
+              <systemPropertyVariables>
+                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                <maven.home>${maven.home}</maven.home>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+          <plugin>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <parallel>none</parallel>
+              <forkCount>1</forkCount>
+              <reuseForks>false</reuseForks>
+              <systemPropertyVariables>
+                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                <maven.home>${maven.home}</maven.home>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
   </profiles>
 </project>

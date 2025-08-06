@@ -6,6 +6,7 @@ import com.example.document.repository.DocumentRepositoryJooq;
 import com.example.jooq.generated.tables.DocumentMetadata;
 import com.example.jooq.generated.tables.Documents;
 import com.example.test.MySQLTestResource;
+import com.example.test.NotParallelizable;
 import io.quarkus.test.common.WithTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -13,6 +14,8 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.jooq.Result;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,10 +30,16 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for jOOQ-based DocumentRepository.
  * Tests type-safe SQL queries using jOOQ DSL with real MySQL database.
+ * 
+ * Note: This test class uses sequential execution due to shared test data
+ * and dependencies between test methods. Individual tests modify and rely
+ * on the same document records.
  */
 @QuarkusTest
 @WithTestResource(value = MySQLTestResource.class, restrictToAnnotatedClass = false)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@NotParallelizable(reason = "Tests share state via static testDocumentId and have sequential dependencies")
+@Execution(ExecutionMode.SAME_THREAD)
 public class DocumentRepositoryJooqIntegrationTest {
 
     @Inject
