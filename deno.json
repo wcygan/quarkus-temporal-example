@@ -1,0 +1,14 @@
+{
+  "tasks": {
+    "dev": "./mvnw quarkus:dev",
+    "test": "./mvnw test",
+    "build": "./mvnw clean package",
+    "native": "./mvnw clean package -Pnative",
+    "up": "docker compose up -d",
+    "down": "docker compose down",
+    "ps": "docker compose ps",
+    "init": "./mvnw clean compile",
+    "lint": "./mvnw spotless:check",
+    "format": "./mvnw spotless:apply"
+  }
+}

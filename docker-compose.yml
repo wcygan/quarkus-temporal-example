@@ -1,0 +1,58 @@
+services:
+  # Temporal's MySQL database
+  mysql-temporal:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: dev
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./scripts/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql-temporal-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pdev"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  
+  # Application's MySQL database (for document storage)
+  mysql-docstore:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: docpass
+      MYSQL_DATABASE: docstore
+      MYSQL_USER: docuser
+      MYSQL_PASSWORD: docpass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-docstore-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pdocpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  temporal:
+    image: temporalio/auto-setup:1.23
+    environment:
+      - DB=mysql8
+      - MYSQL_SEEDS=mysql-temporal
+      - MYSQL_USER=root
+      - MYSQL_PWD=dev
+    ports:
+      - "7233:7233"
+    depends_on:
+      mysql-temporal:
+        condition: service_healthy
+  temporal-ui:
+    image: temporalio/ui:latest
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    ports:
+      - "8088:8080"
+    depends_on:
+      - temporal
+
+volumes:
+  mysql-temporal-data:
+  mysql-docstore-data:
