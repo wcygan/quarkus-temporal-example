@@ -1,5 +1,7 @@
 package com.example;
 
+import com.example.test.MySQLTestResource;
+import io.quarkus.test.common.WithTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -7,6 +9,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
+@WithTestResource(value = MySQLTestResource.class, restrictToAnnotatedClass = false)
 public class ApplicationTest {
 
     @Test
