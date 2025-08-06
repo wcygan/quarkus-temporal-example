@@ -314,7 +314,7 @@ public class OrderSagaWorkflowIntegrationTest {
     @Test
     @Order(5)
     @DisplayName("Test workflow queries on real Temporal server")
-    public void testWorkflowQueries() throws InterruptedException {
+    public void testWorkflowQueries() {
         String workflowId = "order-saga-integration-query-" + UUID.randomUUID();
         logger.info("Starting query test with workflow ID: {}", workflowId);
         
@@ -360,13 +360,11 @@ public class OrderSagaWorkflowIntegrationTest {
         String failureReason = workflow.getFailureReason();
         logger.info("Initial failure reason: {}", failureReason);
         
-        // Wait a bit for workflow to progress
-        Thread.sleep(2000);
-        
-        // Query again
+        // Query again immediately - temporal queries provide real-time status
+        // No sleep needed as queries are synchronous and reflect current workflow state
         status = workflow.getOrderStatus();
         steps = workflow.getCompletedSteps();
-        logger.info("Status after 2 seconds: {}, Steps: {}", status, steps);
+        logger.info("Current status: {}, Steps: {}", status, steps);
         
         // Wait for completion
         WorkflowStub untypedStub = WorkflowStub.fromTyped(workflow);

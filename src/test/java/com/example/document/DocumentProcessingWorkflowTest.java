@@ -184,11 +184,9 @@ public class DocumentProcessingWorkflowTest {
         ocrResult.setPageCount(10);
         
         when(processing.performOcr(anyLong())).thenAnswer(invocation -> {
-            // Simulate heartbeating during OCR
-            for (int i = 1; i <= 10; i++) {
-                // In real implementation, would call Activity.getExecutionContext().heartbeat()
-                Thread.sleep(100);
-            }
+            // In real implementation, this would perform OCR with heartbeating:
+            // Activity.getExecutionContext().heartbeat() would be called periodically
+            // For unit tests, we can return immediately without simulating processing time
             return ocrResult;
         });
         

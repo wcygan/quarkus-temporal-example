@@ -127,9 +127,10 @@ public class ErrorHandlingWorkflowTest {
             public void processWithHeartbeat(String input, int iterations) {
                 // Don't send any heartbeats, just do work
                 // The heartbeat timeout (2 seconds) will expire before we complete
-                for (int i = 0; i < 10; i++) {
+                // Using shorter sleeps to make test faster while still exceeding timeout
+                for (int i = 0; i < 25; i++) {
                     try {
-                        Thread.sleep(500); // Sleep in small increments
+                        Thread.sleep(100); // Shorter sleep intervals, more iterations
                     } catch (InterruptedException e) {
                         return; // Exit gracefully if interrupted
                     }

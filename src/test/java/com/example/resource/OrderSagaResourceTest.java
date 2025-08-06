@@ -7,7 +7,9 @@ import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.greaterThan;
@@ -25,6 +27,26 @@ public class OrderSagaResourceTest {
     
     private static final Logger logger = LoggerFactory.getLogger(OrderSagaResourceTest.class);
     private static String testWorkflowId;
+    
+    /**
+     * Utility method to wait for a condition to be true with timeout and polling interval
+     */
+    private void waitForCondition(BooleanSupplier condition, Duration timeout, Duration pollInterval) {
+        long startTime = System.currentTimeMillis();
+        long timeoutMillis = timeout.toMillis();
+        
+        while (!condition.getAsBoolean()) {
+            if (System.currentTimeMillis() - startTime > timeoutMillis) {
+                fail("Timeout waiting for condition");
+            }
+            try {
+                Thread.sleep(pollInterval.toMillis());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while waiting for condition", e);
+            }
+        }
+    }
     
     @Test
     @Order(1)
@@ -58,11 +80,24 @@ public class OrderSagaResourceTest {
     @Test
     @Order(2)
     @DisplayName("Test getting order status via REST API")
-    public void testGetOrderStatus() throws InterruptedException {
-        // Wait a moment for workflow to start processing
-        Thread.sleep(1000);
-        
+    public void testGetOrderStatus() {
         logger.info("Testing GET /order-saga/status/{} endpoint", testWorkflowId);
+        
+        // Wait for workflow to be queryable (status endpoint returns 200)
+        waitForCondition(() -> {
+            try {
+                RestAssured.given()
+                    .pathParam("workflowId", testWorkflowId)
+                    .when()
+                    .get("/order-saga/status/{workflowId}")
+                    .then()
+                    .statusCode(200);
+                return true;
+            } catch (Exception e) {
+                logger.debug("Status endpoint not ready yet: {}", e.getMessage());
+                return false;
+            }
+        }, Duration.ofSeconds(10), Duration.ofMillis(100));
         
         Response response = RestAssured.given()
             .pathParam("workflowId", testWorkflowId)
@@ -165,7 +200,7 @@ public class OrderSagaResourceTest {
     @Test
     @Order(5)
     @DisplayName("Test getting compensation history")
-    public void testGetCompensationHistory() throws InterruptedException {
+    public void testGetCompensationHistory() {
         logger.info("Testing compensation history endpoint");
         
         // Start a new order and simulate failure
@@ -190,8 +225,26 @@ public class OrderSagaResourceTest {
             .then()
             .statusCode(200);
         
-        // Wait for workflow to process and fail
-        Thread.sleep(3000);
+        // Wait for workflow to process and generate compensation history
+        waitForCondition(() -> {
+            try {
+                Response response = RestAssured.given()
+                    .pathParam("workflowId", workflowId)
+                    .when()
+                    .get("/order-saga/compensation-history/{workflowId}")
+                    .then()
+                    .statusCode(200)
+                    .extract()
+                    .response();
+                
+                // Check if compensation is required (indicates workflow has processed the failure)
+                Boolean compensationRequired = response.jsonPath().getBoolean("compensationRequired");
+                return compensationRequired != null && compensationRequired;
+            } catch (Exception e) {
+                logger.debug("Compensation history not ready yet: {}", e.getMessage());
+                return false;
+            }
+        }, Duration.ofSeconds(15), Duration.ofMillis(200));
         
         // Get compensation history
         Response historyResponse = RestAssured.given()
