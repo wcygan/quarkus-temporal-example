@@ -19,8 +19,8 @@ public class MySQLTestResource implements QuarkusTestResourceLifecycleManager {
     public Map<String, String> start() {
         if (container == null || !container.isRunning()) {
             container = new MySQLContainer<>(DockerImageName.parse(MYSQL_IMAGE))
-                .withDatabaseName("testdb")
-                .withUsername("test")
+                .withDatabaseName("docstore")
+                .withUsername("root")
                 .withPassword("test")
                 .withReuse(true)
                 .withCommand("--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci");
@@ -31,10 +31,10 @@ public class MySQLTestResource implements QuarkusTestResourceLifecycleManager {
         // Return configuration properties for Quarkus
         return Map.of(
             "quarkus.datasource.jdbc.url", container.getJdbcUrl(),
-            "quarkus.datasource.username", container.getUsername(),
+            "quarkus.datasource.username", "root",
             "quarkus.datasource.password", container.getPassword(),
             "quarkus.datasource.db-kind", "mysql",
-            "quarkus.hibernate-orm.database.generation", "drop-and-create"
+            "quarkus.flyway.migrate-at-start", "true"
         );
     }
     
