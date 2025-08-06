@@ -1,7 +1,8 @@
 {
   "tasks": {
     "dev": "./mvnw quarkus:dev",
-    "test": "./mvnw test",
+    "test": "deno task up  && ./mvnw test",
+    "test:unit": "./mvnw test -Dtest='!*IntegrationTest'",
     "build": "./mvnw clean package",
     "native": "./mvnw clean package -Pnative",
     "up": "docker compose up -d",
